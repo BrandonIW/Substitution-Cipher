@@ -31,7 +31,7 @@ class WeakCipher:
         for key in self.keys:
             while self.pt_stack:
                 popped_plain = self.pt_stack.popleft()
-                self.encryption(popped_plain, key, self.sbox)
+                # self.encryption(popped_plain, key, self.sbox)
                 self.bits_changed += self.calc_avalanche(popped_plain, key, self.sbox)
             self.pt_stack = deque(self.plaintext)
 
@@ -47,11 +47,14 @@ class WeakCipher:
 
         xor = list(map(lambda nibble: bin(nibble)[2:].zfill(4), [
             int(nib1, 2) ^ int(nib2, 2) for nib1, nib2 in zip(p_text, k_text)]))
-        if avalanche:
-            return xor
 
-        post_sub = [self.sub_box(nibble, next(sbox)) for nibble in xor]
-        self.write(ptext, xor, ktext, post_sub)
+        post_sub_digits = [self.sub_box(nibble, next(sbox)) for nibble in xor]
+        post_sub_binary = [bin(digit)[2:].zfill(4) for digit in post_sub_digits]
+
+        if avalanche:
+            return post_sub_binary
+
+        self.write(ptext, xor, ktext, post_sub_digits, post_sub_binary)
 
     def calc_avalanche(self, ptext, ktext, sbox):
         p_text_list, c_text_list = [ptext], []
@@ -73,10 +76,11 @@ class WeakCipher:
         return nested_sbox[y_coord][x_coord]
 
     @staticmethod
-    def write(plaintext, ciphertext, key, post_sub):
+    def write(plaintext, ciphertext, key, post_sub_digits, post_sub_binary):
         with open("Assignment 1.txt", 'a') as file:
             file.write(f"Plaintext: {plaintext} || Key Used: {key} || "
-                       f"Ciphertext Post-XOR: {ciphertext}  || Ciphertext Post-Substitution: {post_sub}\n")
+                       f"Ciphertext Post-XOR: {ciphertext}  || Ciphertext Post-Sub (Digits): {post_sub_digits} || "
+                       f"Ciphertext Post-Sub (Binary): {post_sub_binary}\n")
 
     @staticmethod
     def calc_average_avalanche(ciphertext_original, ciphertext_changed):
