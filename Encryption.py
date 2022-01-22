@@ -31,7 +31,7 @@ class WeakCipher:
         for key in self.keys:
             while self.pt_stack:
                 popped_plain = self.pt_stack.popleft()
-                # self.encryption(popped_plain, key, self.sbox)
+                self.encryption(popped_plain, key, self.sbox)
                 self.bits_changed += self.calc_avalanche(popped_plain, key, self.sbox)
             self.pt_stack = deque(self.plaintext)
 
