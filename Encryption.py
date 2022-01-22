@@ -35,21 +35,20 @@ class WeakCipher:
                 self.bits_changed += self.calc_avalanche(popped_plain, key, self.sbox)
             self.pt_stack = deque(self.plaintext)
 
-        return f"Total Avalanche Effect: {self.bits_changed / 5120}"
-
+        return f"Total Number of Changed Bits: {self.bits_changed}\nAvalanche Effect: {self.bits_changed / 5120}"
 
     def encryption(self, ptext, ktext, sbox, avalanche=False):
         order = [[3, 1, 4, 2], [1, 3, 2, 4]]
         sbox = cycle(sbox)
 
-        p_text = [nibble for _, nibble in sorted(zip(order[0], ptext.split(" ")))]
+        p_text = [nibble for _, nibble in sorted(zip(order[0], ptext.split(" ")))]    # Reorder nibbles to make it easier to zip and xor
         k_text = [nibble for _, nibble in sorted(zip(order[1], ktext.split(" ")))]
 
-        xor = list(map(lambda nibble: bin(nibble)[2:].zfill(4), [
+        xor = list(map(lambda nibble: bin(nibble)[2:].zfill(4), [                     # xor by comparing zipped nibbles
             int(nib1, 2) ^ int(nib2, 2) for nib1, nib2 in zip(p_text, k_text)]))
 
-        post_sub_digits = [self.sub_box(nibble, next(sbox)) for nibble in xor]
-        post_sub_binary = [bin(digit)[2:].zfill(4) for digit in post_sub_digits]
+        post_sub_digits = [self.sub_box(nibble, next(sbox)) for nibble in xor]        # Calculate Ciphertext in Digits
+        post_sub_binary = [bin(digit)[2:].zfill(4) for digit in post_sub_digits]      # Calculate Ciphertext in Binary
 
         if avalanche:
             return post_sub_binary
@@ -59,18 +58,18 @@ class WeakCipher:
     def calc_avalanche(self, ptext, ktext, sbox):
         p_text_list, c_text_list = [ptext], []
 
-        for idex,num in enumerate(ptext):
+        for idex, num in enumerate(ptext):
             if num != " ":
-                p_text_list.append(ptext[:idex] + str(1 - int(num)) + ptext[idex + 1:])
+                p_text_list.append(ptext[:idex] + str(1 - int(num)) + ptext[idex + 1:]) # Create list of plaintexts with 1 bit flipped
 
         for plaintxt in p_text_list:
-            c_text_list.append(self.encryption(plaintxt, ktext, sbox, True))
+            c_text_list.append(self.encryption(plaintxt, ktext, sbox, True))            # Get binary ciphertext for each plaintext 
 
-        return self.calc_average_avalanche(c_text_list[0], c_text_list[1:])
+        return self.calc_bits_changed(c_text_list[0], c_text_list[1:])
 
     @staticmethod
     def sub_box(nibble, sbox):
-        nested_sbox = [list(islice(sbox, idex, idex + 4))
+        nested_sbox = [list(islice(sbox, idex, idex + 4))                               # Create nested list so we can use x/y coordinates
                        for idex in range(0, len(sbox), 4)]
         x_coord, y_coord = int(nibble[:2], 2), int(nibble[2:], 2)
         return nested_sbox[y_coord][x_coord]
@@ -83,11 +82,15 @@ class WeakCipher:
                        f"Ciphertext Post-Sub (Binary): {post_sub_binary}\n")
 
     @staticmethod
-    def calc_average_avalanche(ciphertext_original, ciphertext_changed):
+    def calc_bits_changed(ciphertext_original, ciphertext_changed):
         count = 0
-        for ciphertext in ciphertext_changed:
-            count += sum(1 for bit1,bit2 in zip(ciphertext_original, ciphertext) if bit1 != bit2)
+        ciphertext_original = "".join(ciphertext_original)
+
+        for list_ciphertext in ciphertext_changed:
+            str_ciphertext = "".join(list_ciphertext)
+            count += sum(1 for bit1, bit2 in zip(ciphertext_original, str_ciphertext) if bit1 != bit2)
         return count
+
 
 if __name__ == '__main__':
     enc1 = WeakCipher(plaintext, keys, subboxes)
